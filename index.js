@@ -1008,6 +1008,73 @@ module.exports = (function() {
       });
     };
 
+    /**
+     * Get the RAM and SWAP usages
+     *
+     * @example:
+     *    > var metrinix = require('metrinix');
+     *    > metrinix.memory().then(function(result) { console.log(result); });
+     *    { ram:
+     *       { total: { size: 142745588, unit: 'kB' },
+     *         used: { size: 5112264, unit: 'kB' },
+     *         free: { size: 451856, unit: 'kB' },
+     *         cached: { size: 137181468, unit: 'kB' },
+     *         buffers: { size: 1223528, unit: 'kB' } },
+     *      swap:
+     *       { total: { size: 150982652, unit: 'kB' },
+     *         used: { size: 183372, unit: 'kB' },
+     *         free: { size: 150788892, unit: 'kB' },
+     *         cached: { size: 10388, unit: 'kB' } },
+     *      raw:
+     *       { MemTotal: { size: 148539436, unit: 'kB' },
+     *         MemFree: { size: 451856, unit: 'kB' },
+     *         MemAvailable: { size: 142745588, unit: 'kB' },
+     *         Buffers: { size: 1223528, unit: 'kB' },
+     *         Cached: { size: 137181468, unit: 'kB' },
+     *         SwapCached: { size: 10388, unit: 'kB' },
+     *         Active: { size: 37773196, unit: 'kB' },
+     *         Inactive: { size: 104922160, unit: 'kB' },
+     *         'Active(anon)': { size: 2560920, unit: 'kB' },
+     *         'Inactive(anon)': { size: 1778500, unit: 'kB' },
+     *         'Active(file)': { size: 35212276, unit: 'kB' },
+     *         'Inactive(file)': { size: 103143660, unit: 'kB' },
+     *         Unevictable: { size: 3656, unit: 'kB' },
+     *         Mlocked: { size: 3656, unit: 'kB' },
+     *         SwapTotal: { size: 150982652, unit: 'kB' },
+     *         SwapFree: { size: 150788892, unit: 'kB' },
+     *         Dirty: { size: 166584, unit: 'kB' },
+     *         Writeback: { size: 0, unit: 'kB' },
+     *         AnonPages: { size: 4285008, unit: 'kB' },
+     *         Mapped: { size: 242532, unit: 'kB' },
+     *         Shmem: { size: 46424, unit: 'kB' },
+     *         Slab: { size: 4755736, unit: 'kB' },
+     *         SReclaimable: { size: 4590048, unit: 'kB' },
+     *         SUnreclaim: { size: 165688, unit: 'kB' },
+     *         KernelStack: { size: 16800, unit: 'kB' },
+     *         PageTables: { size: 48316, unit: 'kB' },
+     *         NFS_Unstable: { size: 0, unit: 'kB' },
+     *         Bounce: { size: 0, unit: 'kB' },
+     *         WritebackTmp: { size: 0, unit: 'kB' },
+     *         CommitLimit: { size: 225252368, unit: 'kB' },
+     *         Committed_AS: { size: 10929632, unit: 'kB' },
+     *         VmallocTotal: { size: 34359738367, unit: 'kB' },
+     *         VmallocUsed: { size: 0, unit: 'kB' },
+     *         VmallocChunk: { size: 0, unit: 'kB' },
+     *         HardwareCorrupted: { size: 0, unit: 'kB' },
+     *         AnonHugePages: { size: 544768, unit: 'kB' },
+     *         CmaTotal: { size: 0, unit: 'kB' },
+     *         CmaFree: { size: 0, unit: 'kB' },
+     *         HugePages_Total: { size: 0, unit: undefined },
+     *         HugePages_Free: { size: 0, unit: undefined },
+     *         HugePages_Rsvd: { size: 0, unit: undefined },
+     *         HugePages_Surp: { size: 0, unit: undefined },
+     *         Hugepagesize: { size: 2048, unit: 'kB' },
+     *         DirectMap4k: { size: 364732, unit: 'kB' },
+     *         DirectMap2M: { size: 35276800, unit: 'kB' },
+     *         DirectMap1G: { size: 116391936, unit: 'kB' } } }
+     *
+     * @return <Object>defer
+     */
     self.memory = function() {
       return defer(function(deferred) {
         fs.readFile('/proc/meminfo', function(err, data) {
@@ -1027,13 +1094,22 @@ module.exports = (function() {
           deferred.resolve({
             ram: {
               total: memoryMap['MemAvailable'],
-              used: memoryMap['MemAvailable'] - memoryMap['MemFree'],
+              used: {
+                size: memoryMap['MemAvailable'].size - memoryMap['MemFree'].size - memoryMap['Cached'].size,
+                unit: memoryMap['MemAvailable'].unit,
+              },
               free: memoryMap['MemFree'],
+              cached: memoryMap['Cached'],
+              buffers: memoryMap['Buffers'],
             },
             swap: {
               total: memoryMap['SwapTotal'],
-              used: memoryMap['SwapTotal'] - memoryMap['SwapFree'],
+              used: {
+                size: memoryMap['SwapTotal'].size - memoryMap['SwapFree'].size - memoryMap['SwapCached'].size,
+                unit: memoryMap['SwapTotal'].unit,
+              },
               free: memoryMap['SwapFree'],
+              cached: memoryMap['SwapCached'],
             },
             raw: memoryMap
           });
