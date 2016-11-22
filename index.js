@@ -1117,6 +1117,31 @@ module.exports = (function() {
       });
     };
 
+    /**
+     * System load average
+     *
+     * @example:
+     *    > var metrinix = require('metrinix');
+     *    > metrinix.loadAvg().then(function(result) { console.log(result); });
+     *    { min1: 0.01806640625,
+     *      min5: 0.0576171875,
+     *      min15: 0.0498046875,
+     *      raw: [ 0.01806640625, 0.0576171875, 0.0498046875 ] }
+     *
+     * @return <Object>defer
+     */
+    self.loadAvg = function() {
+      return defer(function(deferred) {
+        var loadAvg = os.loadavg();
+        deferred.resolve({
+          min1: loadAvg[0],
+          min5: loadAvg[1],
+          min15: loadAvg[2],
+          raw: loadAvg,
+        });
+      });
+    };
+
     return self;
   }
 
