@@ -271,7 +271,7 @@ module.exports = (function() {
      *            env_end:0,
      *            exit_code:0
      *         },
-     *         cpu:{
+     *         cpu: {
      *            totalPercent:0,
      *            userPercent:0,
      *            systemPercent:0,
@@ -280,7 +280,13 @@ module.exports = (function() {
      *              system: 0,
      *              total: 0,
      *            }
-     *         }
+     *         },
+               memory: {
+                 pages: 0,
+                 pagesize: 0,
+                 bytes: 0,
+                 mb: 0,
+               }
      *      }
      *
      * @return <Object>defer
@@ -998,6 +1004,39 @@ module.exports = (function() {
             }
           });
           deferred.resolve(df);
+        });
+      });
+    };
+
+    self.memory = function() {
+      return defer(function(deferred) {
+        fs.readFile('/proc/meminfo', function(err, data) {
+          var lines = data.toString().split("\n");
+          var memoryMap = {};
+          lines.forEach(function(line) {
+            var parts = line.split(':');
+            if (!parts || parts.length != 2) {
+              return true;
+            }
+            var byteParts = parts[1].trim().split(' ');
+            memoryMap[parts[0]] = {
+              size: parseInt(byteParts[0], 10),
+              unit: byteParts[1],
+            };
+          });
+          deferred.resolve({
+            ram: {
+              total: memoryMap['MemAvailable'],
+              used: memoryMap['MemAvailable'] - memoryMap['MemFree'],
+              free: memoryMap['MemFree'],
+            },
+            swap: {
+              total: memoryMap['SwapTotal'],
+              used: memoryMap['SwapTotal'] - memoryMap['SwapFree'],
+              free: memoryMap['SwapFree'],
+            },
+            raw: memoryMap
+          });
         });
       });
     };
