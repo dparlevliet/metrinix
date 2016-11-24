@@ -282,12 +282,12 @@ module.exports = (function() {
      *              total: 0,
      *            }
      *         },
-               memory: {
-                 pages: 0,
-                 pagesize: 0,
-                 bytes: 0,
-                 mb: 0,
-               }
+     *         memory: {
+     *           pages: 0,
+     *           pagesize: 0,
+     *           bytes: 0,
+     *           mb: 0,
+     *         }
      *      }
      *
      * @return <Object>defer
@@ -409,61 +409,83 @@ module.exports = (function() {
 
       return self.uptime().then(function(prevUptime) {
         return defer(function(deferred) {
-          self._getconf('CLK_TCK').then(function(hertz) {
-            readAll().then(function(processes) {
+          defer(function(_deferred) {
+            readAll().then(function(prevProcesses) {
               // to calculate the percent usage right now we need to compare
               // it against some recent figures, otherwise we would only
               // be able to achieve an average percentage value over the
               // life-time of the process.
               setTimeout(function() {
-                self.uptime().then(function(curUptime) {
-                  var upDiff = curUptime.up - prevUptime.up;
-                  readAll().then(function(p2processes) {
-                    Object.keys(p2processes).forEach(function(pid) {
-                      try {
-                        // calculate the cpu usage
-                        var prevProcess = processes[pid];
-                        var curProcess = p2processes[pid];
-
-                        if (!prevProcess) {
-                          // this is a new process, we have nothing to benchmark
-                          // against. Instead, we will remove it from the list.
-                          delete p2processes[pid];
-                          return true;
-                        }
-
-                        // diff in user space
-                        var prevUserTime = prevProcess.raw.utime + prevProcess.raw.cutime;
-                        var curUserTime = curProcess.raw.utime + curProcess.raw.cutime;
-                        var userDiff = (curUserTime - prevUserTime) / hertz;
-
-                        // diff in system space
-                        var prevSystemTime = prevProcess.raw.stime + prevProcess.raw.cstime;
-                        var curSystemTime = curProcess.raw.stime + curProcess.raw.cstime;
-                        var systemDiff = (curSystemTime - prevSystemTime) / hertz;
-
-                        // total diff
-                        var totalDiff = userDiff + systemDiff;
-
-                        p2processes[pid].cpu = {
-                          totalPercent: (totalDiff/upDiff) * 100,
-                          userPercent: (userDiff/upDiff) * 100,
-                          systemPercent: (systemDiff/upDiff) * 100,
-                          raw: {
-                            user: userDiff,
-                            system: systemDiff,
-                            total: totalDiff,
-                          }
-                        };
-                      } catch (e) {
-                        console.log(e);
-                      }
-                    });
-                    deferred.resolve(p2processes);
-                  });
+                _deferred.resolve({
+                  prevProcesses: prevProcesses,
+                  prevUptime: prevUptime,
                 });
-              }, 500);
+              }, 1000);
             });
+          }).then(function(prefab) {
+            return defer(function(_deferred) {
+              // get the uptime right now
+              self.uptime().then(function(curUptime) {
+                var upDiff = curUptime.up - prevUptime.up;
+                prefab.upDiff = upDiff;
+                prefab.curUptime = curUptime;
+                _deferred.resolve(prefab);
+              });
+            });
+          }).then(function(prefab) {
+            // get the list of current processes
+            return defer(function(_deferred) {
+              readAll().then(function(curProcesses) {
+                prefab.curProcesses = curProcesses;
+                _deferred.resolve(prefab);
+              });
+            });
+          }).then(function(prefab) {
+            // get the cpu hertz
+            return defer(function(_deferred) {
+              self._getconf('CLK_TCK').then(function(hertz) {
+                prefab.hertz = hertz;
+                _deferred.resolve(prefab);
+              });
+            });
+          }).then(function(prefab) {
+            Object.keys(prefab.curProcesses).forEach(function(pid) {
+              // calculate the cpu usage
+              var prevProcess = prefab.processes[pid];
+              var curProcess = prefab.curProcesses[pid];
+
+              if (!prevProcess) {
+                // this is a new process, we have nothing to benchmark
+                // against. Instead, we will remove it from the list.
+                delete prefab.curProcesses[pid];
+                return true;
+              }
+
+              // diff in user space
+              var prevUserTime = prevProcess.raw.utime + prevProcess.raw.cutime;
+              var curUserTime = curProcess.raw.utime + curProcess.raw.cutime;
+              var userDiff = (curUserTime - prevUserTime) / prefab.hertz;
+
+              // diff in system space
+              var prevSystemTime = prevProcess.raw.stime + prevProcess.raw.cstime;
+              var curSystemTime = curProcess.raw.stime + curProcess.raw.cstime;
+              var systemDiff = (curSystemTime - prevSystemTime) / prefab.hertz;
+
+              // total diff
+              var totalDiff = userDiff + systemDiff;
+
+              prefab.curProcesses[pid].cpu = {
+                totalPercent: (totalDiff/prefab.upDiff) * 100,
+                userPercent: (userDiff/prefab.upDiff) * 100,
+                systemPercent: (systemDiff/prefab.upDiff) * 100,
+                raw: {
+                  user: userDiff,
+                  system: systemDiff,
+                  total: totalDiff,
+                }
+              };
+            });
+            deferred.resolve(prefab.curProcesses);
           });
         });
       });
@@ -637,6 +659,9 @@ module.exports = (function() {
     self.memory = function() {
       return defer(function(deferred) {
         fs.readFile('/proc/meminfo', function(err, data) {
+          if (err) {
+            throw err;
+          }
           var lines = data.toString().split("\n");
           var memoryMap = {};
           lines.forEach(function(line) {
@@ -697,6 +722,241 @@ module.exports = (function() {
           min5: loadAvg[1],
           min15: loadAvg[2],
           raw: loadAvg,
+        });
+      });
+    };
+
+    /**
+     * Get network statistics
+     *
+     * @example:
+     *    > var metrinix = require('metrinix');
+     *    > metrinix.network().then(function(result) { console.log(result); });
+     *    {
+     *      "interfaces": {
+     *        "veth5dda6cc": {
+     *          "type": "docker",
+     *          "rx": {
+     *            "speed": 0, "unit": "kB/s"
+     *          },
+     *          "tx": {
+     *            "speed": 0, "unit": "kB/s"
+     *          },
+     *          "raw": {
+     *            "prev": {
+     *              "name": "veth5dda6cc",
+     *              "receive": {
+     *                "bytes": 335337,
+     *                "errs": 399,
+     *                "packets": 0,
+     *                "drop": 0,
+     *                "fifo": 0,
+     *                "frame": 0,
+     *                "compressed": 0,
+     *                "multicast": 0
+     *              },
+     *              "transfer": {
+     *                "bytes": 12105717,
+     *                "errs": 171074,
+     *                "packets": 0,
+     *                "drop": 0,
+     *                "fifo": 0,
+     *                "frame": 0,
+     *                "compressed": 0,
+     *                "multicast": 0
+     *              },
+     *              "raw": [
+     *                "veth5dda6cc:", "335337", "399", "0", "0", "0", "0", "0",
+     *                "0", "12105717", "171074", "0", "0", "0", "0", "0", "0"
+     *              ]
+     *            },
+     *            "cur": {
+     *              "name": "veth5dda6cc",
+     *              "receive": {
+     *                "bytes": 335337,
+     *                "errs": 399,
+     *                "packets": 0,
+     *                "drop": 0,
+     *                "fifo": 0,
+     *                "frame": 0,
+     *                "compressed": 0,
+     *                "multicast": 0
+     *              },
+     *              "transfer": {
+     *                "bytes": 12105717,
+     *                "errs": 171074,
+     *                "packets": 0,
+     *                "drop": 0,
+     *                "fifo": 0,
+     *                "frame": 0,
+     *                "compressed": 0,
+     *                "multicast": 0
+     *              },
+     *              "raw": [
+     *                "veth5dda6cc:", "335337", "399", "0", "0", "0", "0", "0",
+     *                "0", "12105717", "171074", "0", "0", "0", "0", "0", "0"
+     *              ]
+     *            }
+     *          }
+     *        },
+     *      },
+     *      "total": {
+     *        "docker": {
+     *          "rx": {
+     *            "speed": 0.6533203125,
+     *            "unit": "kB/s"
+     *          },
+     *          "tx": {
+     *            "speed": 1.2529296875,
+     *            "unit": "kB/s"
+     *          }
+     *        },
+     *        "physical": {
+     *          "rx": {
+     *            "speed": 11.572265625,
+     *            "unit": "kB/s"
+     *          },
+     *          "tx": {
+     *            "speed": 3.337890625,
+     *            "unit": "kB/s"
+     *          }
+     *        },
+     *        "bridge": {
+     *          "rx": {
+     *            "speed": 0.5849609375,
+     *            "unit": "kB/s"
+     *          },
+     *          "tx": {
+     *            "speed": 1.2529296875,
+     *            "unit": "kB/s"
+     *          }
+     *        }
+     *      }
+     *    }
+     *
+     * @return <Object>defer
+     */
+    self.network = function() {
+      var readAll = function() {
+        return defer(function(deferred) {
+          fs.readFile('/proc/net/dev', function(err, data) {
+            if (err) {
+              throw err;
+            }
+            var lines = data.toString().split("\n");
+            /**
+             * Inter-|   Receive                                                |  Transmit
+             * face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+             */
+            var interfaces = {};
+            lines.forEach(function(line) {
+              if (line.indexOf(':') > -1) {
+                line = line.replace(/\s+/g, ' ');
+                var parts = line.split(' ');
+                var name = parts[0].replace(':', '');
+                if (name.length == 0 ) {
+                  return true;
+                }
+                interfaces[name] = {
+                  name: name,
+                  receive: {
+                    bytes: parseInt(parts[1]),
+                    errs: parseInt(parts[2]),
+                    packets: parseInt(parts[3]),
+                    drop: parseInt(parts[4]),
+                    fifo: parseInt(parts[5]),
+                    frame: parseInt(parts[6]),
+                    compressed: parseInt(parts[7]),
+                    multicast: parseInt(parts[8]),
+                  },
+                  transfer: {
+                    bytes: parseInt(parts[9]),
+                    errs: parseInt(parts[10]),
+                    packets: parseInt(parts[11]),
+                    drop: parseInt(parts[12]),
+                    fifo: parseInt(parts[13]),
+                    frame: parseInt(parts[14]),
+                    compressed: parseInt(parts[15]),
+                    multicast: parseInt(parts[16]),
+                  },
+                  raw: parts,
+                };
+              }
+            });
+            deferred.resolve(interfaces);
+          });
+        });
+      };
+      return defer(function(deferred) {
+        defer(function(_deferred) {
+          readAll().then(function(network) {
+            setTimeout(function() {
+              _deferred.resolve({
+                prevNetwork: network,
+              });
+            }, 1000);
+          });
+        }).then(function(prefab) {
+          return defer(function(_deferred) {
+            readAll().then(function(network) {
+              prefab.curNetwork = network;
+              _deferred.resolve(prefab);
+            });
+          });
+        }).then(function(prefab) {
+          var final = {
+            interfaces: {},
+            total: {},
+          };
+          Object.keys(prefab.curNetwork).forEach(function(name) {
+            try {
+              // calculate the current upload (tx) / download (rx) speed in kB/s
+              var rx = (prefab.curNetwork[name].receive.bytes - prefab.prevNetwork[name].receive.bytes) / 1024;
+              var tx = (prefab.curNetwork[name].transfer.bytes - prefab.prevNetwork[name].transfer.bytes) / 1024;
+
+              // determine the device type
+              var type = 'physical';
+              try { fs.statSync('/sys/class/net/'+name+'/upper_docker0'); type = 'docker'; } catch (e) {}
+              try { fs.statSync('/sys/class/net/'+name+'/bridge'); type = 'bridge'; } catch (e) {}
+              try { fs.statSync('/sys/class/net/'+name+'/tun_flags'); type = 'tun/tap'; } catch (e) {}
+
+              // aggregate the totals by device type
+              if (typeof(final.total[type]) === 'undefined') {
+                final.total[type] = {
+                  rx: {
+                    speed: 0,
+                    unit: 'kB/s',
+                  },
+                  tx: {
+                    speed: 0,
+                    unit: 'kB/s',
+                  },
+                };
+              }
+              final.total[type].rx.speed += rx;
+              final.total[type].tx.speed += tx;
+
+              // define the device stats
+              final.interfaces[name] = {
+                type: type,
+                rx: {
+                  speed: rx,
+                  unit: 'kB/s',
+                },
+                tx: {
+                  speed: tx,
+                  unit: 'kB/s',
+                },
+                raw: {
+                  prev: prefab.prevNetwork[name],
+                  cur: prefab.curNetwork[name],
+                },
+              };
+            } catch (e) {
+              console.log(e);
+            }
+          });
+          deferred.resolve(final);
         });
       });
     };

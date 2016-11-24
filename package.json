@@ -1,7 +1,7 @@
 {
   "contributors": [],
   "dependencies": {
-    "q": "^1.4.1"
+    "q": "^1.4.1",
   },
   "license": "GPLv3",
   "maintainers": [],
