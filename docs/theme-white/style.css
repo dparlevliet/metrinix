@@ -215,9 +215,11 @@ a:hover {
 }
 .content pre > code {
   display: block;
-  background: transparent;
+  background: #333;
   font-size: 0.85em;
-  letter-spacing: -1px;
+  color: #fff;
+  padding: 20px;
+  margin-left: 20px;
 }
 .content blockquote :first-child {
   padding-top: 0;
@@ -542,7 +544,6 @@ body.no-literate .content pre > code:hover::-webkit-scrollbar-thumb {
   }
   body:not(.no-literate) .content > pre,
   body:not(.no-literate) .content > blockquote {
-    width: 380px;
   }
   body:not(.no-literate) .content > pre + p,
   body:not(.no-literate) .content > blockquote + p,
