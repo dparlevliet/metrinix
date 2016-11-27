@@ -596,7 +596,7 @@ body, .content {
   }
 }
 .header {
-  background: #2e3136;
+  background: #1e2124;
   text-shadow: 0 1px 0 rgba(255,255,255,0.5);
   border-bottom: solid 1px #3e4146;
   padding: 15px 15px 15px 30px;
@@ -683,7 +683,7 @@ body, .content {
 .menubar {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  background-color: #1e2124;
+  background-color: #2e3136;
 }
 .menubar .section {
   padding: 30px 30px;
