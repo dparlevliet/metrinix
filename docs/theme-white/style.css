@@ -539,6 +539,7 @@ body, .content {
     box-sizing: border-box;
     padding-right: 40px;
     padding-left: 40px;
+    color: #ccc;
   }
   body:not(.no-literate) .content > h1,
   body:not(.no-literate) .content > h2,
