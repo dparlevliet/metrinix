@@ -508,7 +508,7 @@ body.no-literate .content pre > code:hover::-webkit-scrollbar-thumb {
     box-shadow: inset 1180px 0 #fff, inset 1181px 0 #dfe2e7, inset 1190px 0 5px -10px rgba(0,0,0,0.1);
   }
   .content {
-    font-size: 4vw;
+    font-size: 0.6vw;
   }
 }
 @media (min-width: 1180px) {
