@@ -380,7 +380,7 @@ body:not(.big-h3) .content h3 {
 .content h1:first-child,
 .content h1:first-child a,
 .content h1:first-child a:visited {
-  color: #fff;
+  color: #9090aa;
 }
 .content h1:first-child:before {
   display: none;
@@ -635,14 +635,14 @@ body, .content {
 .header h1,
 .header h1 a,
 .header h1 a:visited {
-  color: #9090aa;
+  color: #fff;
 }
 .header h1 a:hover {
   color: #fff;
 }
 .header li a {
   font-size: 0.88em;
-  color: #9090aa;
+  color: #fff;
   display: block;
 }
 .header li a:hover {
