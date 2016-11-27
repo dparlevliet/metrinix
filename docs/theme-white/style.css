@@ -118,6 +118,9 @@ input {
   font-size: 13px;
   color: #505050;
 }
+body {
+  color: #fff;
+}
 @media (max-width: 480px) {
   body,
   td,
