@@ -379,7 +379,7 @@ body:not(.big-h3) .content h3 {
 .content h1:first-child,
 .content h1:first-child a,
 .content h1:first-child a:visited {
-  color: #505050;
+  color: #fff;
 }
 .content h1:first-child:before {
   display: none;
@@ -501,6 +501,9 @@ body.no-literate .content pre > code:hover::-webkit-scrollbar-thumb {
 }
 .content .button + em {
   color: #9090aa;
+}
+body, .content {
+  background-color: #36393e;
 }
 @media (min-width: 1180px) {
   body:not(.no-literate) .content-root {
@@ -634,7 +637,7 @@ body.no-literate .content pre > code:hover::-webkit-scrollbar-thumb {
   color: #9090aa;
 }
 .header h1 a:hover {
-  color: #505050;
+  color: #fff;
 }
 .header li a {
   font-size: 0.88em;
@@ -679,6 +682,7 @@ body.no-literate .content pre > code:hover::-webkit-scrollbar-thumb {
 .menubar {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  background-color: #1e2124;
 }
 .menubar .section {
   padding: 30px 30px;
@@ -817,7 +821,7 @@ a.big.button:hover:visited {
 .menu a.active,
 .menu a.active:visited,
 .menu a.active:hover {
-  color: #505050 !important;
+  color: #fff !important;
 }
 .menu a.active:after {
   content: '';
