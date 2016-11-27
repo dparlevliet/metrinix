@@ -529,7 +529,7 @@ body.no-literate .content pre > code:hover::-webkit-scrollbar-thumb {
   body:not(.no-literate) .content > h6,
   body:not(.no-literate) .content > pre,
   body:not(.no-literate) .content > blockquote {
-    width: 1050px;
+    width: 950px;
     -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
     box-sizing: border-box;
