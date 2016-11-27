@@ -1,5 +1,5 @@
-Metrinix
-========
+Introduction
+============
 
 NodeJS OS metrics for *nix
 
