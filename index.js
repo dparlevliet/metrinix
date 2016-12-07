@@ -11,6 +11,7 @@ function defer(f) {
   return deferred.promise;
 }
 
+
 module.exports = (function() {
   function Metrinix() {
     var self = this;
@@ -205,7 +206,7 @@ module.exports = (function() {
      *
      * @example:
      *    > var metrinix = require('metrinix');
-     *    > metrinix.uptime().then(function(result) { console.log(result); });
+     *    > metrinix.ps().then(function(result) { console.log(result); });
      *    {
      *      '32764':{
      *         id:{
@@ -407,8 +408,8 @@ module.exports = (function() {
         });
       };
 
-      return self.uptime().then(function(prevUptime) {
-        return defer(function(deferred) {
+      return defer(function(deferred) {
+        self.uptime().then(function(prevUptime) {
           defer(function(_deferred) {
             readAll().then(function(prevProcesses) {
               // to calculate the percent usage right now we need to compare
@@ -449,42 +450,46 @@ module.exports = (function() {
               });
             });
           }).then(function(prefab) {
-            Object.keys(prefab.curProcesses).forEach(function(pid) {
-              // calculate the cpu usage
-              var prevProcess = prefab.processes[pid];
-              var curProcess = prefab.curProcesses[pid];
+            try {
+              Object.keys(prefab.curProcesses).forEach(function(pid) {
+                // calculate the cpu usage
+                var prevProcess = prefab.prevProcesses[pid];
+                var curProcess = prefab.curProcesses[pid];
 
-              if (!prevProcess) {
-                // this is a new process, we have nothing to benchmark
-                // against. Instead, we will remove it from the list.
-                delete prefab.curProcesses[pid];
-                return true;
-              }
-
-              // diff in user space
-              var prevUserTime = prevProcess.raw.utime + prevProcess.raw.cutime;
-              var curUserTime = curProcess.raw.utime + curProcess.raw.cutime;
-              var userDiff = (curUserTime - prevUserTime) / prefab.hertz;
-
-              // diff in system space
-              var prevSystemTime = prevProcess.raw.stime + prevProcess.raw.cstime;
-              var curSystemTime = curProcess.raw.stime + curProcess.raw.cstime;
-              var systemDiff = (curSystemTime - prevSystemTime) / prefab.hertz;
-
-              // total diff
-              var totalDiff = userDiff + systemDiff;
-
-              prefab.curProcesses[pid].cpu = {
-                totalPercent: (totalDiff/prefab.upDiff) * 100,
-                userPercent: (userDiff/prefab.upDiff) * 100,
-                systemPercent: (systemDiff/prefab.upDiff) * 100,
-                raw: {
-                  user: userDiff,
-                  system: systemDiff,
-                  total: totalDiff,
+                if (!prevProcess) {
+                  // this is a new process, we have nothing to benchmark
+                  // against. Instead, we will remove it from the list.
+                  delete prefab.curProcesses[pid];
+                  return true;
                 }
-              };
-            });
+
+                // diff in user space
+                var prevUserTime = prevProcess.raw.utime + prevProcess.raw.cutime;
+                var curUserTime = curProcess.raw.utime + curProcess.raw.cutime;
+                var userDiff = (curUserTime - prevUserTime) / prefab.hertz;
+
+                // diff in system space
+                var prevSystemTime = prevProcess.raw.stime + prevProcess.raw.cstime;
+                var curSystemTime = curProcess.raw.stime + curProcess.raw.cstime;
+                var systemDiff = (curSystemTime - prevSystemTime) / prefab.hertz;
+
+                // total diff
+                var totalDiff = userDiff + systemDiff;
+
+                prefab.curProcesses[pid].cpu = {
+                  totalPercent: (totalDiff/prefab.upDiff) * 100,
+                  userPercent: (userDiff/prefab.upDiff) * 100,
+                  systemPercent: (systemDiff/prefab.upDiff) * 100,
+                  raw: {
+                    user: userDiff,
+                    system: systemDiff,
+                    total: totalDiff,
+                  }
+                };
+              });
+            } catch (e) {
+              console.log(e);
+            }
             deferred.resolve(prefab.curProcesses);
           });
         });
